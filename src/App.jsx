@@ -1,252 +1,188 @@
-// src/App.jsx
-import React, { useState, useEffect } from 'react'
-import PaymentModal from './components/premium/PaymentModal'
-import VerifiedBadge from './components/premium/VerifiedBadge'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { store } from './store/store';
+import { Toaster } from 'react-hot-toast';
+
+// Components
+import Navbar from './components/layout/Navbar';
+import Sidebar from './components/layout/Sidebar';
+import BottomNav from './components/layout/BottomNav';
+import AiAssistant from './components/ai/AiAssistant';
+import VideoChat from './components/chat/VideoChat';
+
+// Pages
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Profile from './pages/Profile';
+import Explore from './pages/Explore';
+import Reels from './pages/Reels';
+import Messages from './pages/Messages';
+import Notifications from './pages/Notifications';
+import Settings from './pages/Settings';
+import Premium from './pages/Premium';
+
+// Styles
+import './styles/globals.css';
+import './App.css';
 
 function App() {
-  const [user, setUser] = useState({
-    id: '1',
-    username: 'john_doe',
-    email: 'john@example.com',
-    isPremium: false,
-    isVerified: false,
-    balance: 0,
-    transactions: []
-  })
-
-  const [showPayment, setShowPayment] = useState(false)
-  const [revenue, setRevenue] = useState(0)
-  const [premiumUsers, setPremiumUsers] = useState([])
-
-  // Load user from localStorage
-  useEffect(() => {
-    const savedUser = localStorage.getItem('minigram_user')
-    if (savedUser) {
-      setUser(JSON.parse(savedUser))
-    }
-    
-    // Load revenue (in real app, from backend)
-    const savedRevenue = localStorage.getItem('minigram_revenue') || '0'
-    setRevenue(parseFloat(savedRevenue))
-  }, [])
-
-  const handlePaymentSuccess = (paymentData) => {
-    // Update user
-    const updatedUser = {
-      ...user,
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('minigram_user');
+    return savedUser ? JSON.parse(savedUser) : {
+      id: '1',
+      username: 'john_doe',
+      name: 'John Doe',
+      email: 'john@example.com',
+      avatar: 'https://i.pravatar.cc/150?img=1',
+      bio: 'Digital creator & entrepreneur',
       isPremium: true,
       isVerified: true,
-      subscriptionEnd: paymentData.subscriptionEnd,
-      plan: paymentData.plan,
-      transactions: [
-        ...user.transactions,
-        {
-          id: paymentData.paymentId,
-          amount: paymentData.amount,
-          plan: paymentData.plan,
-          date: new Date().toISOString(),
-          status: 'completed'
-        }
-      ]
-    }
-    
-    setUser(updatedUser)
-    localStorage.setItem('minigram_user', JSON.stringify(updatedUser))
-    
-    // Update revenue (💰 PUL TUSHDI!)
-    const newRevenue = revenue + (paymentData.amount / 100)
-    setRevenue(newRevenue)
-    localStorage.setItem('minigram_revenue', newRevenue.toString())
-    
-    // Add to premium users
-    setPremiumUsers(prev => [...prev, {
-      id: user.id,
-      username: user.username,
-      plan: paymentData.plan,
-      amount: paymentData.amount / 100,
-      date: new Date().toISOString()
-    }])
-    
-    alert(`🎉 Payment successful! $${paymentData.amount / 100} added to your account.`)
-  }
+      followers: 1250,
+      following: 340,
+      posts: 47,
+      subscriptionEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      plan: 'monthly'
+    };
+  });
 
-  const handleCancelPremium = () => {
-    const updatedUser = {
-      ...user,
-      isPremium: false,
-      isVerified: false,
-      subscriptionEnd: null,
-      plan: null
-    }
-    
-    setUser(updatedUser)
-    localStorage.setItem('minigram_user', JSON.stringify(updatedUser))
-    alert('Premium subscription cancelled.')
-  }
+  const [showAiAssistant, setShowAiAssistant] = useState(false);
+  const [showVideoChat, setShowVideoChat] = useState(false);
+  const [videoCallData, setVideoCallData] = useState(null);
+
+  // Save user to localStorage
+  useEffect(() => {
+    localStorage.setItem('minigram_user', JSON.stringify(user));
+  }, [user]);
+
+  const handleAiAssistantOpen = () => {
+    setShowAiAssistant(true);
+  };
+
+  const handleVideoCall = (peerUser) => {
+    setVideoCallData({
+      peerUser,
+      isCaller: true
+    });
+    setShowVideoChat(true);
+  };
+
+  const handleIncomingCall = (peerUser) => {
+    setVideoCallData({
+      peerUser,
+      isCaller: false
+    });
+    setShowVideoChat(true);
+  };
+
+  const handlePremiumSubscribe = (plan) => {
+    const subscriptionEnd = new Date();
+    if (plan === 'monthly') subscriptionEnd.setMonth(subscriptionEnd.getMonth() + 1);
+    else if (plan === 'yearly') subscriptionEnd.setFullYear(subscriptionEnd.getFullYear() + 1);
+    else subscriptionEnd.setFullYear(subscriptionEnd.getFullYear() + 100);
+
+    setUser(prev => ({
+      ...prev,
+      isPremium: true,
+      plan,
+      subscriptionEnd: subscriptionEnd.toISOString(),
+      isVerified: true
+    }));
+  };
 
   return (
-    <div className="app">
-      {/* Navbar */}
-      <nav className="navbar">
-        <div className="navbar-brand">
-          <div className="logo">
-            <span className="logo-icon">M</span>
-            <span className="logo-text">Minigram</span>
+    <Provider store={store}>
+      <Router>
+        <div className="app">
+          <Navbar 
+            user={user}
+            onAiAssistantClick={handleAiAssistantOpen}
+            onVideoCallClick={() => handleVideoCall({
+              id: '2',
+              name: 'Sarah Johnson',
+              avatar: 'https://i.pravatar.cc/150?img=5',
+              isVerified: true,
+              isPremium: true
+            })}
+          />
+          
+          <div className="app-container">
+            <Sidebar 
+              user={user}
+              onAiAssistantClick={handleAiAssistantOpen}
+            />
+            
+            <main className="main-content">
+              <Routes>
+                <Route path="/" element={<Home user={user} onVideoCall={handleVideoCall} />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/profile/:username" element={<Profile user={user} />} />
+                <Route path="/explore" element={<Explore />} />
+                <Route path="/reels" element={<Reels />} />
+                <Route path="/messages" element={<Messages onVideoCall={handleVideoCall} />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/settings" element={<Settings user={user} setUser={setUser} />} />
+                <Route path="/premium" element={<Premium user={user} onSubscribe={handlePremiumSubscribe} />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </main>
           </div>
-          {user.isPremium && <VerifiedBadge />}
-        </div>
-
-        <div className="navbar-stats">
-          <div className="stat">
-            <span className="stat-label">Revenue:</span>
-            <span className="stat-value">${revenue.toFixed(2)}</span>
-          </div>
-          <div className="stat">
-            <span className="stat-label">Premium Users:</span>
-            <span className="stat-value">{premiumUsers.length}</span>
-          </div>
-        </div>
-
-        <div className="navbar-actions">
-          {user.isPremium ? (
-            <>
-              <button className="btn btn-premium">
-                👑 Premium Active
-              </button>
-              <button 
-                className="btn btn-danger"
-                onClick={handleCancelPremium}
-              >
-                Cancel Premium
-              </button>
-            </>
-          ) : (
-            <button 
-              className="btn btn-primary"
-              onClick={() => setShowPayment(true)}
-            >
-              ⭐ Get Minigram Verified
-            </button>
+          
+          <BottomNav />
+          
+          {/* AI Assistant */}
+          <AiAssistant
+            isOpen={showAiAssistant}
+            onClose={() => setShowAiAssistant(false)}
+            user={user}
+          />
+          
+          {/* Video Chat */}
+          {videoCallData && (
+            <VideoChat
+              isOpen={showVideoChat}
+              onClose={() => {
+                setShowVideoChat(false);
+                setVideoCallData(null);
+              }}
+              user={user}
+              peerUser={videoCallData.peerUser}
+              isCaller={videoCallData.isCaller}
+              onCallStart={() => console.log('Call started')}
+              onCallEnd={() => console.log('Call ended')}
+            />
           )}
+          
+          {/* Toast Notifications */}
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: 'var(--bg-card)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+              },
+              success: {
+                iconTheme: {
+                  primary: 'var(--success-color)',
+                  secondary: 'white',
+                },
+              },
+              error: {
+                iconTheme: {
+                  primary: 'var(--danger-color)',
+                  secondary: 'white',
+                },
+              },
+            }}
+          />
         </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="main">
-        {/* Dashboard */}
-        <div className="dashboard">
-          <div className="dashboard-card">
-            <h2>💰 Revenue Dashboard</h2>
-            <div className="revenue-stats">
-              <div className="revenue-stat">
-                <div className="revenue-label">Total Revenue</div>
-                <div className="revenue-value">${revenue.toFixed(2)}</div>
-              </div>
-              <div className="revenue-stat">
-                <div className="revenue-label">Premium Users</div>
-                <div className="revenue-value">{premiumUsers.length}</div>
-              </div>
-              <div className="revenue-stat">
-                <div className="revenue-label">Conversion Rate</div>
-                <div className="revenue-value">{premiumUsers.length > 0 ? '5%' : '0%'}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Premium Users List */}
-          <div className="dashboard-card">
-            <h2>👑 Premium Users</h2>
-            {premiumUsers.length > 0 ? (
-              <div className="premium-users-list">
-                {premiumUsers.map((premiumUser, index) => (
-                  <div key={index} className="premium-user">
-                    <div className="user-info">
-                      <span className="user-avatar">👤</span>
-                      <span className="user-name">{premiumUser.username}</span>
-                    </div>
-                    <div className="user-plan">
-                      <span className={`plan-badge ${premiumUser.plan}`}>
-                        {premiumUser.plan}
-                      </span>
-                    </div>
-                    <div className="user-amount">
-                      ${premiumUser.amount}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-message">No premium users yet</p>
-            )}
-          </div>
-        </div>
-
-        {/* User Profile */}
-        <div className="profile-card">
-          <h2>👤 Your Profile</h2>
-          <div className="profile-info">
-            <div className="profile-field">
-              <span className="field-label">Username:</span>
-              <span className="field-value">{user.username}</span>
-            </div>
-            <div className="profile-field">
-              <span className="field-label">Email:</span>
-              <span className="field-value">{user.email}</span>
-            </div>
-            <div className="profile-field">
-              <span className="field-label">Status:</span>
-              <span className={`status-badge ${user.isPremium ? 'premium' : 'basic'}`}>
-                {user.isPremium ? '👑 Premium' : '⭐ Basic'}
-              </span>
-            </div>
-            {user.isPremium && (
-              <>
-                <div className="profile-field">
-                  <span className="field-label">Plan:</span>
-                  <span className="field-value">{user.plan}</span>
-                </div>
-                <div className="profile-field">
-                  <span className="field-label">Subscription End:</span>
-                  <span className="field-value">
-                    {new Date(user.subscriptionEnd).toLocaleDateString()}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Transactions */}
-          {user.transactions.length > 0 && (
-            <div className="transactions">
-              <h3>💳 Transaction History</h3>
-              <div className="transactions-list">
-                {user.transactions.map((transaction, index) => (
-                  <div key={index} className="transaction">
-                    <div className="transaction-id">{transaction.id}</div>
-                    <div className="transaction-amount">${transaction.amount / 100}</div>
-                    <div className="transaction-plan">{transaction.plan}</div>
-                    <div className="transaction-date">
-                      {new Date(transaction.date).toLocaleDateString()}
-                    </div>
-                    <div className="transaction-status completed">{transaction.status}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPayment}
-        onClose={() => setShowPayment(false)}
-        onSuccess={handlePaymentSuccess}
-        user={user}
-      />
-    </div>
-  )
+      </Router>
+    </Provider>
+  );
 }
 
-export default App
+export default App;
